@@ -5,6 +5,7 @@ A simple k-means clustering
 
 from collections import OrderedDict
 import csv
+import logging
 from math import sqrt
 import sys
 
@@ -141,38 +142,43 @@ class Player:
     def __str__(self):
         return self.pretty_name
 
+def formatted_cluster_info(cluster, points):
+    """ Format basic cluster info """
+    return '%.3f %.3f %s' % (cluster.centroid[0], cluster.centroid[1],
+                             ', '.join(map(lambda p: str(p.label), points)))
+
 def print_clusters(clusters):
-    """ Print basic cluster info. """
+    """ Print basic cluster info """
+    print("k=%d" % len(clusters.clusters))
     for cluster, points in zip(clusters.clusters, clusters.points):
-        print('%.3f %.3f %s' % (cluster.centroid[0], cluster.centroid[1],
-                                ', '.join(map(lambda p: str(p.label), points))))
+        print(formatted_cluster_info(cluster, points))
 
 def make_clusters(points, k):
     """ Make clusters, which is the algorithm of interest in this script """
 
     clusters = Clusters(map(lambda p: p.coords, points[0:k]))
 
-    # TODO: while True
-    for i in range(4):
+    previous_centroids = []
+    while True:
         for point in points:
             clusters.assign(point)
-
-        # TODO: save centroids
-
         clusters.update_centroids()
-
-        # TODO: if new centroids == saved centroids, break
-
-        print_clusters(clusters)
-
+        centroids = [c.centroid for c in clusters.clusters]
+        if centroids == previous_centroids:
+            break
+        for cluster, cluster_points in zip(clusters.clusters, clusters.points):
+            logging.debug(formatted_cluster_info(cluster, cluster_points))
+        previous_centroids = centroids
         clusters.clear_assignments()
+
+    return clusters
 
 def _point_for_player(player):
     """
     Creates a Point for a Player, where the coordinates of the Point will be used for clustering
     """
-    coords = (player.home_runs * 100 / player.plate_appearances,
-              player.stolen_bases * 100 / player.plate_appearances)
+    coords = (player.home_runs * 500 / player.plate_appearances,
+              player.stolen_bases * 500 / player.plate_appearances)
     return Point(coords, player)
 
 def _main(filename):
@@ -184,7 +190,12 @@ def _main(filename):
             if player.position != 'P' and player.plate_appearances != 0:
                 position_player_points.append(_point_for_player(player))
 
-    make_clusters(position_player_points, 4)
+    print_clusters(make_clusters(position_player_points, 4))
+    print_clusters(make_clusters(position_player_points, 2))
+    print_clusters(make_clusters(position_player_points, 3))
+    print_clusters(make_clusters(position_player_points, 5))
+    print_clusters(make_clusters(position_player_points, 6))
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
     _main('1979-Pittsburgh-Pirates-Batting.csv')
